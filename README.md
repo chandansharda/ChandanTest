@@ -21,6 +21,8 @@ This project uses **MVVM+C**:
   - Today's Profit & Loss
   - Total Profit & Loss
 - Diffable data source with dynamic table height.
+- Searching based on symbols
+- Sorting based on symbols
 - Rounded top corners with shadow.
 - Footer with expand button.
 
