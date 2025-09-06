@@ -21,6 +21,7 @@ final class PortfolioViewController: UIViewController {
     private let searchBar = UISearchBar()
     private let expandableView = ProfitLossExpandableView()
     private let mainStackView = UIStackView()
+    private let refreshControl = UIRefreshControl()
     private var searchBarHeightConstraint: NSLayoutConstraint?
     private var showSearchBar: Bool = false
 
@@ -122,6 +123,9 @@ final class PortfolioViewController: UIViewController {
         view.addSubview(tableView)
         view.addSubview(expandableView)
         tableView.register(PortfolioTableViewCell.self, forCellReuseIdentifier: "PortfolioTableViewCell")
+        tableView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(didPullToRefresh), for: .valueChanged)
+
         expandableView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
@@ -160,6 +164,7 @@ final class PortfolioViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 guard let self else { return }
+                self.refreshControl.endRefreshing()
                 switch state {
                 case .idle:
                     self.tableView.setBackgroundState(.none)
@@ -181,7 +186,12 @@ final class PortfolioViewController: UIViewController {
             }
             .store(in: &cancellables)
     }
+}
 
+extension PortfolioViewController {
+    @objc private func didPullToRefresh() {
+        fetchData()
+    }
 }
 
 // MARK: - Navigation Bar
