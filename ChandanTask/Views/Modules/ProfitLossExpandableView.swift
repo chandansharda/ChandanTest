@@ -8,35 +8,41 @@
 import UIKit
 
 final class ProfitLossExpandableView: UIView {
-    
+
     // MARK: - Model
     struct Model {
         let totalCurrentValue: Double
         let totalInvestment: Double
         let todaysProfitAndLoss: Double
         let totalProfitLoss: Double
-        
+
         func returnList() -> [ProfitLossDescriptionView.Model] {
             [
                 .init(key: "Current value*", value: "\(totalCurrentValue.toINR())"),
                 .init(key: "Total investment*", value: "\(totalInvestment.toINR())"),
-                .init(key: "Today's Profit & Loss*", value: "\(todaysProfitAndLoss.toINR())", isProfitable: todaysProfitAndLoss >= 0),
+                .init(
+                    key: "Today's Profit & Loss*",
+                    value: "\(todaysProfitAndLoss.toINR())",
+                    isProfitable: todaysProfitAndLoss >= 0
+                ),
             ]
         }
 
         func returnProfitAndLoss() -> ProfitLossDescriptionView.Model {
-            .init(key: "Profit & Loss*", value: "\(totalProfitLoss.toINR())",
-                  isProfitable: totalProfitLoss >= 0,
-                  expandButtonVisible: true
+            .init(
+                key: "Profit & Loss*",
+                value: "\(totalProfitLoss.toINR())",
+                isProfitable: totalProfitLoss >= 0,
+                expandButtonVisible: true
             )
         }
     }
-    
+
     // MARK: - Section
-    private enum Section {
+    private enum Section: Hashable {
         case main
     }
-    
+
     // MARK: - UI
     private let mainTableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .plain)
@@ -45,22 +51,23 @@ final class ProfitLossExpandableView: UIView {
         tableView.separatorStyle = .none
         return tableView
     }()
-    private let tableFooterView: ProfitLossDescriptionView = ProfitLossDescriptionView()
-    private let lineView: UIView = UIView()
-    
+
+    private let tableFooterView = ProfitLossDescriptionView()
+    private let lineView = UIView()
+
     // MARK: - Data Source
     private var dataSource: UITableViewDiffableDataSource<Section, ProfitLossDescriptionView.Model>!
     private var tableViewHeightConstraint: NSLayoutConstraint?
 
-    // MARK: - attributes
+    // MARK: - Attributes
     var model: Model? {
         didSet {
-            if let model {
+            if let model = model {
                 apply(model: model)
             }
         }
     }
-    
+
     // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -68,11 +75,11 @@ final class ProfitLossExpandableView: UIView {
         setupLayout()
         configureDataSource()
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     // MARK: - Setup
     private func setupTableView() {
         mainTableView.register(
@@ -80,23 +87,24 @@ final class ProfitLossExpandableView: UIView {
             forCellReuseIdentifier: "PortfolioDescriptionTableViewCell"
         )
     }
-    
+
     private func setupLayout() {
-        self.backgroundColor = UIColor(named: "LightGray") ?? .white
-        mainTableView.backgroundColor = UIColor(named: "LightGray") ?? .white
+        backgroundColor = UIColor(named: "LightGray") ?? .white
+        mainTableView.backgroundColor = backgroundColor
         tableFooterView.delegate = self
         self.roundTopCornersWithShadow()
+
         lineView.backgroundColor = .lightGray
         lineView.isHidden = true
-        
-        [mainTableView, lineView, tableFooterView].forEach { subView in
-            addSubview(subView)
-            subView.translatesAutoresizingMaskIntoConstraints = false
+
+        [mainTableView, lineView, tableFooterView].forEach {
+            addSubview($0)
+            $0.translatesAutoresizingMaskIntoConstraints = false
         }
-        
+
         tableViewHeightConstraint = mainTableView.heightAnchor.constraint(equalToConstant: 0)
         tableViewHeightConstraint?.isActive = true
-        
+
         NSLayoutConstraint.activate([
             mainTableView.leadingAnchor.constraint(equalTo: leadingAnchor),
             mainTableView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -114,7 +122,7 @@ final class ProfitLossExpandableView: UIView {
             tableFooterView.heightAnchor.constraint(equalToConstant: ProfitLossDescriptionView.HEIGHT)
         ])
     }
-    
+
     private func configureDataSource() {
         dataSource = UITableViewDiffableDataSource<Section, ProfitLossDescriptionView.Model>(
             tableView: mainTableView
@@ -128,25 +136,25 @@ final class ProfitLossExpandableView: UIView {
             cell.configure(with: model)
             return cell
         }
-        
+
         mainTableView.dataSource = dataSource
     }
-    
+
     // MARK: - Public
     func apply(model: Model) {
         tableFooterView.model = model.returnProfitAndLoss()
     }
 
     func applySnapShot(isExpanded: Bool) {
-        guard let model else { return }
+        guard let model = model else { return }
+
         lineView.isHidden = !isExpanded
         var snapshot = NSDiffableDataSourceSnapshot<Section, ProfitLossDescriptionView.Model>()
         snapshot.appendSections([.main])
         if isExpanded {
             snapshot.appendItems(model.returnList(), toSection: .main)
-        } else {
-            snapshot.appendItems([], toSection: .main)
         }
+
         dataSource.apply(snapshot, animatingDifferences: true)
         updateTableViewHeight()
     }
@@ -172,6 +180,7 @@ extension ProfitLossExpandableView: ProfitLossDescriptionViewPresentable {
     }
 }
 
+
 #if DEBUG
 extension ProfitLossExpandableView {
     struct TestHook {
@@ -191,4 +200,3 @@ extension ProfitLossExpandableView {
     var testHook: TestHook { TestHook(self) }
 }
 #endif
-
