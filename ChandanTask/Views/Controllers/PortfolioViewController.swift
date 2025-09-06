@@ -21,6 +21,8 @@ final class PortfolioViewController: UIViewController {
     private let searchBar = UISearchBar()
     private let expandableView = ProfitLossExpandableView()
     private let mainStackView = UIStackView()
+    private var searchBarHeightConstraint: NSLayoutConstraint?
+    private var showSearchBar: Bool = false
 
     // MARK: - Diffable DataSource
     enum Section {
@@ -46,6 +48,7 @@ final class PortfolioViewController: UIViewController {
         
         view.backgroundColor = .white
         setupNavigationBar()
+        setupSearchBar()
         setupTableView()
         setupActivityIndicator()
         configureDataSource()
@@ -102,6 +105,16 @@ final class PortfolioViewController: UIViewController {
     // MARK: - Setup UISearchBar
     private func setupSearchBar() {
         searchBar.delegate = self
+        searchBar.placeholder = "Search symbols here"
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
+        searchBarHeightConstraint = searchBar.heightAnchor.constraint(equalToConstant: 0)
+        searchBarHeightConstraint?.isActive = true
+        NSLayoutConstraint.activate([
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+        ])
     }
 
     // MARK: - Setup Table
@@ -111,7 +124,7 @@ final class PortfolioViewController: UIViewController {
         tableView.register(PortfolioTableViewCell.self, forCellReuseIdentifier: "PortfolioTableViewCell")
         expandableView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -80),
@@ -174,15 +187,41 @@ final class PortfolioViewController: UIViewController {
 // MARK: - Navigation Bar
 extension PortfolioViewController {
     @objc func tappedOnSearchButton() {
-        print("tapped")
+        showSearchBar.toggle()
+        updateSearchBarheight()
     }
 
     @objc func tappedOnSortButton() {
-        print("tapped")
+        viewModel.sortList()
     }
 }
 
 // MARK: - Search bar delegates
 extension PortfolioViewController: UISearchBarDelegate {
+    func updateSearchBarheight() {
+        self.view.layoutIfNeeded()
+        searchBarHeightConstraint?.constant = showSearchBar ? 50 : 0
+
+        UIView.animate(
+            withDuration: 0.3,
+            delay: 0,
+            options: [.curveEaseInOut, .beginFromCurrentState]
+        ) {
+            self.view?.layoutIfNeeded()
+        }
+    }
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        viewModel.searchQuery = searchText
+    }
     
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.text = ""
+        viewModel.searchQuery = ""
+        searchBar.resignFirstResponder()
+    }
 }

@@ -27,6 +27,7 @@ final class PortfolioViewModel: ObservableObject {
     @Published var searchQuery: String = ""
 
     private var items: [UserHolding] = []
+    private var storedItems: [UserHolding] = []
     private var cancellables = Set<AnyCancellable>()
 
     init(service: NetworkServicing) {
@@ -43,6 +44,7 @@ final class PortfolioViewModel: ObservableObject {
                 body: nil
             )
             items = userData.data.userHolding
+            storedItems = userData.data.userHolding
             state = .loaded(items)
         } catch {
             state = .failed("Failed to load portfolio: \(error.localizedDescription)")
@@ -72,13 +74,32 @@ final class PortfolioViewModel: ObservableObject {
     func refresh() async {
         await fetchPortfolio()
     }
+    
+    private var searchDispatchItem: DispatchWorkItem?
 
     func filterSearch(withQuery query: String) {
-        // filter search logic will come here
+        searchDispatchItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            
+            if query.isEmpty {
+                self.items = self.storedItems
+            } else {
+                let cleanedQuery = query.lowercased().replacingOccurrences(of: " ", with: "")
+                self.items = self.storedItems.filter {
+                    $0.symbol.lowercased().replacingOccurrences(of: " ", with: "").contains(cleanedQuery)
+                }
+            }
+            
+            self.state = .loaded(self.items)
+        }
+        searchDispatchItem = workItem
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3, execute: workItem)
     }
 
     func sortList() {
-        /// all sorting logic comes here
+        self.items.sort(by: {$0.currentValue < $1.currentValue})
+        self.state = .loaded(self.items)
     }
 
     func toggleSearch() {
@@ -86,3 +107,23 @@ final class PortfolioViewModel: ObservableObject {
     }
 }
 
+// MARK: - Test Hook
+#if DEBUG
+extension PortfolioViewModel {
+
+    var testItems: [UserHolding] {
+        get { items }
+        set { items = newValue }
+    }
+
+    var testStoredItems: [UserHolding] {
+        get { storedItems }
+        set { storedItems = newValue }
+    }
+
+    var testSearchDispatchItem: DispatchWorkItem? {
+        get { searchDispatchItem }
+        set { searchDispatchItem = newValue }
+    }
+}
+#endif

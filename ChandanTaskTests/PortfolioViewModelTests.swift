@@ -9,10 +9,6 @@ import XCTest
 import Combine
 @testable import ChandanTask
 
-import XCTest
-import Combine
-@testable import ChandanTask
-
 // MARK: - Mock Network Service
 final class MockNetworkService: NetworkServicing {
     var response: UserData?
@@ -36,6 +32,14 @@ final class PortfolioViewModelTests: XCTestCase {
         super.setUp()
         service = MockNetworkService()
         sut = PortfolioViewModel(service: service)
+        
+        // Prepare stored items for search tests
+        sut.testStoredItems = [
+            UserHolding(symbol: "AAPL", quantity: 10, ltp: 150, avgPrice: 145, close: 148),
+            UserHolding(symbol: "GOOG", quantity: 5, ltp: 2800, avgPrice: 2700, close: 2750),
+            UserHolding(symbol: "MSFT", quantity: 8, ltp: 300, avgPrice: 290, close: 295)
+        ]
+        sut.testItems = sut.testStoredItems
     }
 
     override func tearDown() {
@@ -121,4 +125,80 @@ final class PortfolioViewModelTests: XCTestCase {
         sut.searchQuery = "AAPL"
         XCTAssertEqual(sut.searchQuery, "AAPL")
     }
+
+    // MARK: - Filter Search Tests
+
+    func test_filterSearch_withMatchingQuery_filtersItems() async {
+        let expectation = XCTestExpectation(description: "Debounced filter search completes")
+
+        sut.testStoredItems = [
+            UserHolding(symbol: "AAPL", quantity: 10, ltp: 150, avgPrice: 145, close: 148),
+            UserHolding(symbol: "GOOG", quantity: 5, ltp: 2800, avgPrice: 2700, close: 2750)
+        ]
+
+        sut.filterSearch(withQuery: "GOO")
+
+        try? await Task.sleep(nanoseconds: 400_000_000)
+
+        await MainActor.run {
+            XCTAssertEqual(sut.testItems.count, 1)
+            XCTAssertEqual(sut.testItems.first?.symbol, "GOOG")
+            expectation.fulfill()
+        }
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+    }
+
+    func test_filterSearch_withEmptyQuery_restoresAllItems() async {
+        let expectation = XCTestExpectation(description: "Debounced filter search completes with empty query")
+
+        // Setup stored items
+        sut.testStoredItems = [
+            UserHolding(symbol: "AAPL", quantity: 10, ltp: 150, avgPrice: 145, close: 148),
+            UserHolding(symbol: "GOOG", quantity: 5, ltp: 2800, avgPrice: 2700, close: 2750),
+            UserHolding(symbol: "MSFT", quantity: 8, ltp: 300, avgPrice: 290, close: 295)
+        ]
+
+        // Apply a filter first to simulate previous state
+        sut.testItems = [
+            UserHolding(symbol: "AAPL", quantity: 10, ltp: 150, avgPrice: 145, close: 148)
+        ]
+
+        sut.filterSearch(withQuery: "")
+
+        // Wait for debounce delay (0.3 sec + buffer)
+        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 sec
+
+        await MainActor.run {
+            XCTAssertEqual(sut.testItems.count, 3)
+            expectation.fulfill()
+        }
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+    }
+
+
+    func test_filterSearch_withNoMatchingQuery_returnsEmpty() async {
+        let expectation = XCTestExpectation(description: "Debounced filter search completes with no match")
+
+        // Setup stored items
+        sut.testStoredItems = [
+            UserHolding(symbol: "AAPL", quantity: 10, ltp: 150, avgPrice: 145, close: 148),
+            UserHolding(symbol: "GOOG", quantity: 5, ltp: 2800, avgPrice: 2700, close: 2750),
+            UserHolding(symbol: "MSFT", quantity: 8, ltp: 300, avgPrice: 290, close: 295)
+        ]
+
+        sut.filterSearch(withQuery: "XYZ")
+
+        // Wait for debounce delay
+        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 sec
+
+        await MainActor.run {
+            XCTAssertEqual(sut.testItems.count, 0)
+            expectation.fulfill()
+        }
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+    }
+
 }
