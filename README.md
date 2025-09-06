@@ -26,4 +26,9 @@ This project uses **MVVM+C**:
 
 ---
 
-<video controls width="600"> <source src=".ChandanTask/Media/Simulator%20Screen%20Recording%20-%20iPhone%2016%20Pro%20-%202025-09-06%20at%2013.17.42.mp4" type="video/mp4"> Your browser does not support the video tag. </video> ```
+## Demo Video
+
+Click the link below to view the demo video:
+
+[View Demo Video](https://github.com/chandansharda/ChandanTest/blob/main/ChandanTask/Media/Simulator%20Screen%20Recording%20-%20iPhone%2016%20Pro%20-%202025-09-06%20at%2013.17.42.mp4)
+
